@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Charakterbogen – C'Pento</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f5f0e8;
+    --card: #fff8ee;
+    --border: #c8a96e;
+    --border-light: #e8d9b8;
+    --accent: #7b3f00;
+    --accent2: #a0522d;
+    --text: #2c1a0e;
+    --text-muted: #7a5c3a;
+    --input-bg: #fffdf6;
+    --hp-color: #c0392b;
+    --tag-bg: #f0e0c0;
+    --fight-bg: #fff3e6;
+    --psi-color: #5b0ea6;
+    --psi-light: #f3eaff;
+    --psi-border: #c9a8e8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Georgia', serif; background: var(--bg); color: var(--text); padding: 20px; max-width: 920px; margin: 0 auto; }
+
+  [contenteditable="true"] { outline: none; border-bottom: 1px dashed var(--border); min-width: 28px; display: inline-block; padding: 1px 3px; transition: background 0.15s; }
+  [contenteditable="true"]:hover { background: #fff5e0; }
+  [contenteditable="true"]:focus { background: #fffbe6; border-bottom: 1px solid var(--accent); }
+  [contenteditable="true"].block { display: block; width: 100%; border: 1px dashed var(--border); padding: 8px; min-height: 60px; border-radius: 4px; line-height: 1.6; }
+  [contenteditable="true"].block:focus { border: 1px solid var(--accent); background: #fffbe6; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.07); }
+  .section-title { background: var(--accent); color: #fff8ee; font-size: 0.73rem; font-weight: bold; letter-spacing: 0.13em; text-transform: uppercase; padding: 6px 14px; }
+  .section-body { padding: 14px 16px; }
+
+  /* HEADER */
+  .header-grid { display: grid; grid-template-columns: 92px 1fr; gap: 14px; align-items: start; }
+  .portrait-box { width: 92px; height: 114px; border: 2px dashed var(--border); border-radius: 6px; display: flex; align-items: center; justify-content: center; background: #f8f4ee; cursor: pointer; overflow: hidden; flex-shrink: 0; }
+  .portrait-box img { width: 100%; height: 100%; object-fit: contain; }
+  .portrait-hint { font-size: 0.62rem; color: var(--text-muted); text-align: center; padding: 6px; line-height: 1.4; }
+  .portrait-box:hover { background: #ede0cc; }
+  .char-name { font-size: 1.45rem; font-weight: bold; color: var(--accent); margin-bottom: 4px; }
+  .meta-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+
+  /* CHAR TABS */
+  .char-tab-bar { display: flex; border-bottom: 1px solid var(--border-light); margin-bottom: 9px; }
+  .char-tab { font-size: 0.68rem; padding: 5px 11px; cursor: pointer; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -1px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+  .char-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .char-tab-content { display: none; }
+  .char-tab-content.active { display: block; }
+  .char-kv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+  .char-kv-row { display: flex; flex-direction: column; padding: 4px 0; border-bottom: 1px solid var(--border-light); font-size: 0.84rem; }
+  .char-kv-row:last-child { border-bottom: none; }
+
+  .lang-list { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; align-items: center; }
+  .lang-tag { background: #e0ecff; border: 1px solid #a0c0e8; border-radius: 10px; padding: 2px 8px; font-size: 0.72rem; color: #1a3a6e; display: flex; align-items: center; gap: 3px; }
+  .lang-tag button { background: none; border: none; cursor: pointer; color: #6090c0; font-size: 0.67rem; padding: 0; line-height: 1; }
+  .lang-tag button:hover { color: #c0392b; }
+  .add-lang-btn { background: none; border: 1px dashed #a0c0e8; border-radius: 10px; padding: 2px 8px; font-size: 0.72rem; cursor: pointer; color: #4070a0; font-family: inherit; }
+  .add-lang-btn:hover { background: #e0ecff; }
+
+  /* ATTRIBUTES */
+  .attr-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .attr-card { background: var(--input-bg); border: 1px solid var(--border-light); border-radius: 6px; padding: 7px 4px 5px; display: flex; flex-direction: column; align-items: center; gap: 1px; cursor: pointer; user-select: none; }
+  .attr-card:hover { background: #fdf6ec; }
+  .attr-card.active { border-color: var(--accent); background: #fdf6ec; }
+  .attr-label { font-size: 0.52rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); text-align: center; line-height: 1.2; margin-bottom: 1px; }
+  .attr-value { font-size: 1.35rem; font-weight: bold; color: var(--accent); min-width: 28px; text-align: center; }
+  .attr-mod { font-size: 0.68rem; color: var(--text-muted); min-width: 20px; text-align: center; }
+  .attr-save-line { display: flex; justify-content: center; gap: 4px; font-size: 0.67rem; margin-top: 2px; }
+  .attr-save-lbl2 { color: var(--text-muted); }
+  .attr-save-val { color: #27607a; font-weight: 600; }
+  .attr-skill-hint { font-size: 0.57rem; color: var(--accent2); margin-top: 3px; }
+  .skill-panel-box { background: var(--fight-bg); border: 1px solid var(--border-light); border-radius: 6px; padding: 10px 12px; margin-top: 8px; }
+  .skill-panel-hdr { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); font-weight: bold; margin-bottom: 8px; }
+  .skill-panel-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 1px 12px; }
+
+  .special-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0 14px; }
+  .spec-box { background: var(--fight-bg); border: 1px solid var(--border-light); border-radius: 6px; padding: 7px 10px; }
+  .spec-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 2px; }
+  .spec-val { font-size: 1.2rem; font-weight: bold; color: var(--accent2); }
+
+  .skills-section-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 8px; padding-bottom: 3px; border-bottom: 1px solid var(--border-light); }
+  .skills-columns { display: grid; grid-template-columns: repeat(auto-fill, minmax(152px, 1fr)); gap: 12px; }
+  .skill-group-header { font-size: 0.59rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); font-weight: bold; margin-bottom: 5px; padding-bottom: 2px; border-bottom: 1px solid var(--border-light); }
+  .skill-row { display: flex; align-items: center; gap: 5px; padding: 2px 0; font-size: 0.77rem; }
+  .skill-row input[type="checkbox"] { width: 12px; height: 12px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+  .skill-mod { font-size: 0.7rem; font-weight: bold; color: var(--accent2); min-width: 22px; text-align: right; flex-shrink: 0; }
+  .skill-name { color: var(--text); flex: 1; }
+  .skill-roll-btn { background: none; border: 1px solid var(--border-light); border-radius: 4px; padding: 0px 5px; font-size: 0.62rem; cursor: pointer; color: var(--text-muted); flex-shrink: 0; line-height: 1.5; }
+  .skill-roll-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .skill-roll-result { font-size: 0.68rem; font-weight: bold; color: var(--accent); min-width: 28px; flex-shrink: 0; }
+
+  /* FIGHT */
+  .fight-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 6px; margin-bottom: 12px; }
+  .fight-stat { background: var(--fight-bg); border: 1px solid var(--border-light); border-radius: 6px; padding: 7px 9px; text-align: center; }
+  .fight-stat-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--text-muted); margin-bottom: 4px; }
+  .fight-stat-val { font-size: 1.25rem; font-weight: bold; color: var(--accent2); min-width: 28px; display: inline-block; }
+
+  /* WEAPONS */
+  .weapons-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin: 14px 0 6px; }
+  .wp-cell { display: flex; flex-direction: column; gap: 1px; }
+  .wp-lbl { font-size: 0.55rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); }
+  .weapon-tab-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: 6px; }
+  .weapon-tab { font-size: 0.69rem; padding: 4px 11px; cursor: pointer; background: var(--input-bg); border: 1px solid var(--border-light); border-radius: 10px; color: var(--text-muted); font-family: inherit; }
+  .weapon-tab:hover { background: #fdf6ec; }
+  .weapon-tab.active { background: var(--tag-bg); border-color: var(--border); color: var(--accent); font-weight: bold; }
+  .weapon-tab-add { font-size: 0.69rem; padding: 4px 9px; cursor: pointer; background: none; border: 1px dashed var(--border); border-radius: 10px; color: var(--text-muted); font-family: inherit; }
+  .weapon-tab-add:hover { background: var(--tag-bg); }
+  .weapon-detail { background: var(--input-bg); border: 1px solid var(--border-light); border-radius: 6px; padding: 10px 12px; }
+  .weapon-fields { display: grid; grid-template-columns: 1.5fr 0.8fr 1fr 1.6fr auto; gap: 8px; margin-bottom: 8px; font-size: 0.83rem; align-items: end; }
+  .add-weapon-btn { background: none; border: 1px dashed var(--border); border-radius: 5px; padding: 5px; width: 100%; cursor: pointer; color: var(--text-muted); font-size: 0.78rem; font-family: inherit; }
+  .add-weapon-btn:hover { background: var(--tag-bg); }
+
+  /* FIGHTER FEATURES (Tatendrang, Verschnaufen) */
+  .features-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+  .feature-box { background: var(--fight-bg); border: 1px solid var(--border-light); border-radius: 6px; padding: 9px 12px; flex: 1; min-width: 160px; }
+  .feature-name { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); font-weight: bold; margin-bottom: 7px; }
+  .feature-slots { display: flex; gap: 7px; margin-bottom: 8px; }
+  .feature-slots input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent2); cursor: pointer; }
+  .rest-btn { background: var(--tag-bg); border: 1px solid var(--border); border-radius: 10px; padding: 3px 9px; font-size: 0.72rem; cursor: pointer; color: var(--accent2); font-family: inherit; margin-right: 5px; }
+  .rest-btn:hover { background: #e8d8b0; }
+  .rest-btn.long { background: var(--psi-light); border-color: var(--psi-border); color: var(--psi-color); }
+  .rest-btn.long:hover { background: #d8c0f8; }
+
+  /* DEATH SAVES */
+  .death-box { background: var(--fight-bg); border: 1px solid var(--border-light); border-radius: 6px; padding: 10px 12px; margin-top: 4px; }
+
+  /* COMBAT SKILL TAGS */
+  .combat-skills-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 6px; margin-top: 14px; }
+  .combat-skills-list { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .skill-tag-fight { background: var(--tag-bg); border: 1px solid var(--border-light); border-radius: 12px; padding: 3px 10px; font-size: 0.77rem; display: flex; align-items: center; gap: 4px; }
+  .skill-tag-fight button { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 0.67rem; padding: 0; }
+  .skill-tag-fight button:hover { color: #c0392b; }
+  .add-skill-btn { background: none; border: 1px dashed var(--border); border-radius: 12px; padding: 3px 10px; font-size: 0.72rem; cursor: pointer; color: var(--text-muted); font-family: inherit; }
+  .add-skill-btn:hover { background: var(--tag-bg); }
+
+  /* HP */
+  .bar-track { height: 14px; background: #e8d8c0; border-radius: 7px; overflow: hidden; border: 1px solid var(--border-light); }
+  .bar-fill { height: 100%; border-radius: 7px; background: var(--hp-color); transition: width 0.3s; }
+  .bar-inputs { display: flex; gap: 4px; align-items: center; margin-top: 4px; font-size: 0.8rem; }
+  .bar-inputs input { width: 44px; border: 1px solid var(--border-light); border-radius: 4px; padding: 2px 4px; font-size: 0.8rem; background: var(--input-bg); color: var(--text); text-align: center; font-family: inherit; }
+
+  /* PSIONICS */
+  .psi-energy-label { font-size: 0.63rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); white-space: nowrap; }
+  .psi-top-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .psi-dice-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .psi-die { width: 36px; height: 36px; border-radius: 7px; background: var(--psi-light); border: 2px solid var(--psi-border); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; user-select: none; }
+  .psi-die:hover { background: #e8d8ff; }
+  .psi-die.spent { background: #e8e8e8; border-color: #c8c8c8; opacity: 0.5; }
+  .psi-die-sub { font-size: 0.48rem; font-weight: bold; color: var(--psi-color); letter-spacing: 0.05em; }
+  .psi-die.spent .psi-die-sub { color: #aaa; }
+  .psi-die-val { font-size: 0.88rem; font-weight: bold; color: var(--psi-color); line-height: 1; }
+  .psi-die.spent .psi-die-val { color: #aaa; text-decoration: line-through; }
+  .long-rest-btn { background: var(--psi-light); border: 1px solid var(--psi-border); border-radius: 14px; padding: 4px 12px; font-size: 0.72rem; cursor: pointer; color: var(--psi-color); font-family: inherit; font-weight: bold; margin-left: auto; white-space: nowrap; }
+  .long-rest-btn:hover { background: #e0caff; }
+  .psi-ability-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .psi-ab-card { background: var(--psi-light); border: 1px solid var(--psi-border); border-radius: 6px; padding: 9px 10px; display: flex; flex-direction: column; gap: 5px; }
+  .psi-ab-icon { font-size: 1.1rem; flex-shrink: 0; }
+  .psi-ab-name { font-size: 0.84rem; font-weight: bold; color: var(--psi-color); }
+  .psi-ab-meta { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; font-size: 0.68rem; }
+  .psi-ab-desc { font-size: 0.74rem; color: var(--text-muted); margin-top: 2px; }
+
+  /* INVENTORY */
+  #all-tiles { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: nowrap; }
+  #all-tiles .inv-tile { flex: 1 1 0; min-width: 0; }
+  .coin-icon { font-size: 64px; line-height: 1; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; }
+  .coin-label { font-size: 0.57rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+  .tile-qty { font-size: 1rem; font-weight: bold; color: var(--text); }
+  .coin-val { font-size: 1rem; font-weight: bold; }
+  .coin-val.gold { color: #b8860b; }
+  .coin-val.silver { color: #607888; }
+  .coin-val.copper { color: #a0522d; }
+  .inventory-list { display: flex; flex-direction: column; gap: 6px; }
+  .inv-tiles { display: flex; gap: 8px; flex-wrap: nowrap; margin-bottom: 8px; }
+  .inv-tile { background: var(--input-bg); border: 1px solid var(--border-light); border-radius: 7px; padding: 8px 6px 7px; display: flex; flex-direction: column; align-items: center; gap: 5px; text-align: center; }
+  .inv-tile-img { width: 80px; height: 80px; object-fit: contain; border-radius: 5px; cursor: pointer; display: block; }
+  .inv-tile-ph { width: 80px; height: 80px; border: 1px dashed var(--border); border-radius: 5px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 1.6rem; cursor: pointer; background: none; padding: 0; }
+  .quest-row { display: flex; align-items: center; gap: 9px; padding: 5px 2px; border-bottom: 1px solid var(--border-light); font-size: 0.83rem; }
+  .quest-row:last-child { border-bottom: none; }
+  .quest-row input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+  .quest-row.done span { text-decoration: line-through; color: var(--text-muted); }
+  .inv-row { display: grid; grid-template-columns: auto 1fr auto auto; gap: 8px; align-items: center; padding: 5px 8px; background: var(--input-bg); border: 1px solid var(--border-light); border-radius: 5px; font-size: 0.84rem; }
+  .inv-row button { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 0.72rem; padding: 2px 4px; }
+  .inv-row button:hover { color: #c0392b; }
+  .inv-img { width: 32px; height: 32px; object-fit: contain; border-radius: 4px; cursor: pointer; display: block; border: 1px solid var(--border-light); }
+  .inv-img-btn { width: 32px; height: 32px; background: none; border: 1px dashed var(--border); border-radius: 4px; cursor: pointer; color: var(--text-muted); font-size: 0.75rem; display: flex; align-items: center; justify-content: center; padding: 0; }
+  .add-item-btn { margin-top: 8px; background: none; border: 1px dashed var(--border); border-radius: 5px; padding: 6px; width: 100%; cursor: pointer; color: var(--text-muted); font-size: 0.79rem; font-family: inherit; }
+  .add-item-btn:hover { background: var(--tag-bg); }
+
+  /* SPECIES/BACKSTORY */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .species-traits { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .trait-tag { background: #e8f0d8; border: 1px solid #b8d090; border-radius: 10px; padding: 2px 8px; font-size: 0.74rem; display: flex; align-items: center; gap: 4px; color: #2d5a0e; }
+  .trait-tag button { background: none; border: none; cursor: pointer; color: #6a9a40; font-size: 0.67rem; padding: 0; }
+  .trait-tag button:hover { color: #c0392b; }
+  .add-trait-btn { background: none; border: 1px dashed #b8d090; border-radius: 10px; padding: 2px 8px; font-size: 0.72rem; cursor: pointer; color: #6a9a40; font-family: inherit; }
+  .add-trait-btn:hover { background: #e8f0d8; }
+
+  .edit-hint { font-size: 0.62rem; color: var(--text-muted); text-align: right; margin-bottom: 8px; font-style: italic; }
+
+  @media (max-width: 600px) {
+    .attr-grid { grid-template-columns: repeat(3, 1fr); }
+    .two-col { grid-template-columns: 1fr; }
+    .header-grid { grid-template-columns: 70px 1fr; }
+    .weapon-row { grid-template-columns: 1fr 1fr; }
+  }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── APP NAV ── */
+  .app-nav { display:flex; gap:4px; background:var(--accent); padding:6px 10px; margin:-20px -20px 20px; position:sticky; top:0; z-index:100; box-shadow:0 2px 8px rgba(0,0,0,0.18); }
+  .nav-tab { background:rgba(255,255,255,0.12); border:none; border-radius:8px; padding:6px 16px; font-size:0.8rem; cursor:pointer; color:#fff8ee; font-family:inherit; font-weight:bold; letter-spacing:0.05em; transition:background 0.15s; }
+  .nav-tab:hover { background:rgba(255,255,255,0.22); }
+  .nav-tab.active { background:rgba(255,255,255,0.32); box-shadow:inset 0 -2px 0 rgba(255,255,255,0.5); }
+
+  /* ── CHAR OVERVIEW (Gruppe page) ── */
+  .char-overview-card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px 16px; cursor:pointer; transition:box-shadow 0.15s,border-color 0.15s; }
+  .char-overview-card:hover { box-shadow:0 2px 12px rgba(0,0,0,0.12); border-color:var(--accent); }
+  .char-overview-name { font-size:1.05rem; font-weight:bold; color:var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- ══ APP NAV ══ -->
+<div class="app-nav">
+  <button class="nav-tab active" data-page="cpento" onclick="switchPage('cpento')">🐸 C'Pento</button>
+  <button class="nav-tab" data-page="liviana" onclick="switchPage('liviana')">⚔️ Liviana</button>
+  <button class="nav-tab" data-page="yorwik" onclick="switchPage('yorwik')">🧙 Yorwik</button>
+  <button class="nav-tab" data-page="gruppe" onclick="switchPage('gruppe')">👥 Gruppe</button>
+</div>
+
+<div id="char-page">
+<p class="edit-hint">✏️ Alle Felder sind direkt bearbeitbar</p>
+
+<!-- ══ CHARAKTER ══ -->
+<div class="card">
+  <div class="section-title">⚔️ Charakter</div>
+  <div class="section-body">
+    <div class="header-grid">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+        <div class="portrait-box" onclick="document.getElementById('portrait-input').click()" title="Bild hochladen">
+          <img id="portrait-img" src="" alt="" style="display:none">
+          <div class="portrait-hint" id="portrait-hint">🖼️<br>Bild<br>laden</div>
+        </div>
+        <input type="file" id="portrait-input" accept="image/*" style="display:none">
+        <input type="file" id="inv-img-input" accept="image/*" style="display:none">
+        <input type="file" id="coin-img-input" accept="image/*" style="display:none">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <input type="checkbox" id="heroic-inspiration" style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;">
+          <label for="heroic-inspiration" style="cursor:pointer;color:var(--accent);font-weight:bold;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.07em;text-align:center;line-height:1.3;">✨ Heroic<br>Inspiration</label>
+        </div>
+      </div>
+      <div>
+        <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;">
+          <div class="char-name" contenteditable="true">C'Pento</div>
+          <div style="display:flex;gap:6px;margin-bottom:2px;">
+            <button onclick="doShortRest()" class="rest-btn" style="font-size:0.72rem;">Short Rest</button>
+            <button onclick="doLongRest()" class="rest-btn long" style="font-size:0.72rem;">Long Rest</button>
+          </div>
+        </div>
+        <div class="char-tab-bar">
+          <div class="char-tab active" onclick="switchCharTab(0)">Charakter</div>
+          <div class="char-tab" onclick="switchCharTab(1)">Spezies &amp; Bewegung</div>
+        </div>
+        <div class="char-tab-content active" id="char-tab-0">
+          <div class="char-kv-grid">
+            <div class="char-kv-row"><span class="meta-label">Background</span><span>Wanderer</span></div>
+            <div class="char-kv-row"><span class="meta-label">Class</span><span>Fighter</span></div>
+            <div class="char-kv-row"><span class="meta-label">Subclass</span><span>Psionic</span></div>
+            <div class="char-kv-row"><span class="meta-label">Level</span><span contenteditable="true">5</span></div>
+            <div class="char-kv-row"><span class="meta-label">XP</span><span contenteditable="true">6000</span></div>
+          </div>
+        </div>
+        <div class="char-tab-content" id="char-tab-1">
+          <div class="char-kv-grid">
+            <div class="char-kv-row"><span class="meta-label">Spezies</span><span contenteditable="true">Grung</span></div>
+            <div class="char-kv-row"><span class="meta-label">Alter</span><span contenteditable="true">5</span> / <span contenteditable="true">20</span> J.</div>
+            <div class="char-kv-row"><span class="meta-label">Size</span><span>Small</span> · <span>82cm</span></div>
+            <div class="char-kv-row"><span class="meta-label">Speed</span><span>25</span> ft</div>
+            <div class="char-kv-row"><span class="meta-label">Sprung Weit</span><span>6</span> m</div>
+            <div class="char-kv-row"><span class="meta-label">Sprung Hoch</span><span>3</span> m</div>
+          </div>
+          <div class="lang-list" id="lang-list" style="margin-top:8px;"></div>
+          <div style="margin-top:8px;background:rgba(255,255,255,0.04);border:1px solid var(--border-light);border-radius:6px;padding:7px 10px;">
+            <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:4px;">Spezies-Eigenschaften</div>
+            <div style="font-size:0.76rem;color:var(--text);line-height:1.5;">Hydrate alle 24h oder erhalte 1 Punkt Erschöpfung. Kann Luft und Wasser atmen. Immun gegen Gift-Schaden und Zustand: Vergiftet.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ATTRIBUTE & FERTIGKEITEN ══ -->
+<div class="card">
+  <div class="section-title">📊 Attribute &amp; Fertigkeiten</div>
+  <div class="section-body">
+    <div class="special-row" style="margin-bottom:10px;">
+      <div class="spec-box">
+        <div class="spec-label">Passive Wahrnehmung</div>
+        <div class="spec-val" id="passive-perception">11</div>
+      </div>
+      <div class="spec-box">
+        <div class="spec-label">Übungsbonus (Proficiency)</div>
+        <div class="spec-val" id="proficiency-bonus">+2</div>
+      </div>
+    </div>
+    <div class="attr-grid" id="attr-grid"></div>
+    <div id="attr-skill-panel"></div>
+  </div>
+</div>
+
+<!-- ══ KAMPF ══ -->
+<div class="card">
+  <div class="section-title collapsible-title" onclick="toggleSection('kampf-body')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;">🗡️ Kampf <span id="kampf-arrow">▼</span></div>
+  <div class="section-body" id="kampf-body">
+
+    <!-- HP -->
+    <div style="margin-bottom:12px;">
+      <label style="font-size:0.63rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);display:flex;justify-content:space-between;margin-bottom:4px;">
+        <span>❤️ Trefferpunkte</span><span id="hp-label">10 / 10</span>
+      </label>
+      <div class="bar-track"><div class="bar-fill" id="hp-bar" style="width:100%"></div></div>
+      <div class="bar-inputs">
+        <input type="number" id="hp-cur" value="38" min="0"> /
+        <input type="number" id="hp-max" value="38" min="1">
+        <span style="margin-left:8px;font-size:0.74rem;color:var(--text-muted);">Temp: <input type="number" id="hp-temp" value="0" min="0" style="width:44px;border:1px solid var(--border-light);border-radius:4px;padding:2px 4px;font-size:0.8rem;background:var(--input-bg);color:var(--text);text-align:center;font-family:inherit;"></span>
+        <input type="number" id="dmg-input" min="0" placeholder="Schaden" style="width:72px;border:1px solid #d9a0a0;border-radius:5px;padding:2px 5px;font-size:0.8rem;background:#fff8f8;color:var(--text);font-family:inherit;margin-left:8px;">
+        <button onclick="takeDamage()" style="background:#c0392b;color:#fff;border:none;border-radius:5px;padding:3px 9px;font-size:0.75rem;cursor:pointer;font-family:inherit;white-space:nowrap;">⚔ Schaden</button>
+      </div>
+    </div>
+
+    <!-- Fight stats -->
+    <div class="fight-grid" id="fight-grid"></div>
+
+    <!-- Weapons -->
+    <div class="weapons-label">Waffen</div>
+    <div id="weapons-tabs"></div>
+
+    <!-- Bottom row: features + death saves + skills -->
+    <div class="features-row" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-light);">
+      <div class="feature-box">
+        <div class="feature-name">Tatendrang</div>
+        <div style="font-size:0.68rem;color:var(--text-muted);margin-bottom:7px;font-style:italic;">1 Additional Action</div>
+        <div class="feature-slots">
+          <input type="checkbox" id="tatendrang-box" style="width:18px;height:18px;accent-color:var(--accent2);cursor:pointer;">
+        </div>
+      </div>
+      <div class="feature-box">
+        <div class="feature-name">Verschnaufen</div>
+        <div style="font-size:0.68rem;color:var(--text-muted);margin-bottom:7px;font-style:italic;">1W10 + Level TP (3 Aktionen)</div>
+        <div class="feature-slots" id="verschnaufen-slots"></div>
+      </div>
+      <div class="feature-box">
+        <div class="feature-name">💀 Todesrettung</div>
+        <div style="margin-bottom:6px;">
+          <div style="font-size:0.6rem;color:#27ae60;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:3px;">✔ Erfolge</div>
+          <div style="display:flex;gap:7px;">
+            <input type="checkbox" class="death-success" style="width:16px;height:16px;accent-color:#27ae60;cursor:pointer;">
+            <input type="checkbox" class="death-success" style="width:16px;height:16px;accent-color:#27ae60;cursor:pointer;">
+            <input type="checkbox" class="death-success" style="width:16px;height:16px;accent-color:#27ae60;cursor:pointer;">
+          </div>
+        </div>
+        <div>
+          <div style="font-size:0.6rem;color:#c0392b;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:3px;">✖ Misserfolge</div>
+          <div style="display:flex;gap:7px;">
+            <input type="checkbox" class="death-fail" style="width:16px;height:16px;accent-color:#c0392b;cursor:pointer;">
+            <input type="checkbox" class="death-fail" style="width:16px;height:16px;accent-color:#c0392b;cursor:pointer;">
+            <input type="checkbox" class="death-fail" style="width:16px;height:16px;accent-color:#c0392b;cursor:pointer;">
+          </div>
+        </div>
+      </div>
+      <div class="feature-box" style="flex:1.5;">
+        <div class="feature-name">✦ Fähigkeiten</div>
+        <div class="combat-skills-list" id="skills-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PSIONIK ══ -->
+<div class="card">
+  <div class="section-title collapsible-title" onclick="toggleSection('psionik-body')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;">🔮 Psionik <span id="psionik-arrow">▼</span></div>
+  <div class="section-body" id="psionik-body">
+    <div class="psi-top-row">
+      <span class="psi-energy-label">Psi-Energie:</span>
+      <div class="psi-dice-row" id="psi-dice-row"></div>
+    </div>
+    <div id="psi-abilities" class="psi-ability-grid"></div>
+  </div>
+</div>
+
+<!-- ══ INVENTAR ══ -->
+<div class="card">
+  <div class="section-title">🎒 Inventar</div>
+  <div class="section-body">
+    <div id="all-tiles"></div>
+    <div class="inventory-list" id="inventory-list"></div>
+    <button class="add-item-btn" onclick="addItem()">+ Gegenstand hinzufügen</button>
+  </div>
+</div>
+
+<!-- ══ SPEZIES + HINTERGRUND ══ -->
+<div class="two-col">
+  <div class="card">
+    <div class="section-title collapsible-title" onclick="toggleSection('spezies-body')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;">🌿 Spezies <span id="spezies-arrow">▼</span></div>
+    <div class="section-body" id="spezies-body" style="display:none;">
+      <div style="margin-bottom:8px;"><span class="meta-label">Spezies</span><br><span contenteditable="true" style="font-size:1rem;font-weight:bold;color:var(--accent)">—</span></div>
+      <div class="meta-label" style="margin-bottom:4px;">Beschreibung</div>
+      <div contenteditable="true" class="block" style="font-size:0.81rem;min-height:50px;">—</div>
+      <div class="meta-label" style="margin-top:10px;margin-bottom:4px;">Rassenmerkmale</div>
+      <div class="species-traits" id="trait-list"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="section-title collapsible-title" onclick="toggleSection('hintergrund-body')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;">📖 Hintergrund <span id="hintergrund-arrow">▼</span></div>
+    <div class="section-body" id="hintergrund-body" style="display:none;">
+      <div contenteditable="true" class="block" style="font-size:0.81rem;min-height:120px;">—</div>
+      <div class="meta-label" style="margin-top:10px;margin-bottom:4px;">Motivation / Ziel</div>
+      <div contenteditable="true" class="block" style="font-size:0.81rem;min-height:50px;">—</div>
+    </div>
+  </div>
+</div>
+</div><!-- /char-page -->
+
+<!-- ══ GRUPPE PAGE ══ -->
+<div id="gruppe-page" style="display:none">
+  <div class="card">
+    <div class="section-title">👥 Gruppe</div>
+    <div class="section-body">
+      <div id="char-overview-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="section-title">📜 Quest Log</div>
+    <div class="section-body" id="quest-list"></div>
+  </div>
+</div>
+
+<script>
+// ── MULTI-CHAR STATE ──
+const CHAR_KEYS = { cpento:'char-sheet-v6', liviana:'char-liviana-v1', yorwik:'char-yorwik-v1' };
+const GROUP_KEY = 'group-v1';
+let activePage = 'cpento';
+
+const DEFAULT_QUESTS = [
+  {text:'5 Amethyste für Aga, Kreide und Silberstaub', done:false},
+  {text:'Kugel wiederfinden', done:false},
+  {text:'zur Hütte auf dem Berg', done:false},
+  {text:'Pilze für Tarasch', done:false},
+  {text:'Höhle vom Gas befreien', done:false},
+  {text:'Insel erkunden', done:false},
+  {text:'Geheimgang', done:false},
+  {text:'3 Drachentempel besuchen', done:false},
+];
+
+const defaults = {
+  charName: "C'Pento",
+  attrs: [
+    { key:'STR', label:'Strength',     val:10, save:'+2' },
+    { key:'INT', label:'Intelligence', val:10, save:'+0' },
+    { key:'DEX', label:'Dexterity',    val:16, save:'+3' },
+    { key:'WIS', label:'Wisdom',       val:13, save:'+1' },
+    { key:'CON', label:'Konstitution', val:14, save:'+4' },
+    { key:'CHA', label:'Charisma',     val:12, save:'+1' },
+  ],
+  fight: [
+    { key:'INI',  label:'Initiative',      val:3   },
+    { key:'AC',   label:'Rüstungsklasse',  val:14  },
+    { key:'ATK',  label:'Angriff',         val:0   },
+    { key:'DMG',  label:'Schaden',         val:0   },
+    { key:'PDMG', label:'Passiver Schaden',val:'+0' },
+  ],
+  // prof=true marks as proficient; bonus=number overrides auto-calc
+  attrSkills: {
+    STR: { skills:['Athletics'],
+           prof:[true],  bonus:[null] },
+    INT: { skills:['Arcane Knowledge','History','Nachforschen','Nature','Religion'],
+           prof:[false,false,false,false,false], bonus:[null,null,null,null,null] },
+    DEX: { skills:['Acrobatics','Sleight of Hands','Heimlichkeit'],
+           prof:[true,false,true], bonus:[6,null,6] },
+    WIS: { skills:['Animal Ken','Motiv erkennen','Healing','Perception','Survival'],
+           prof:[false,false,false,false,true], bonus:[null,null,null,null,null] },
+    CON: { skills:[], prof:[], bonus:[] },
+    CHA: { skills:['Deception','Einschüchtern','Auftreten','Überreden'],
+           prof:[false,false,false,false], bonus:[null,null,null,null] },
+  },
+  psiDice: [false,false,false,false,false,false],
+  psiAbilities: [
+    { name:'Protective Shield', desc:'', range:'30ft',      cost:'1 Die', roll:'1W8' },
+    { name:'Prisonic Damage',   desc:'', range:'30ft',      cost:'1 Die', roll:'1W8' },
+    { name:'Telekinesis',       desc:'', range:'Auf Sicht', cost:'',      roll:''    },
+  ],
+  weapons: [
+    { name:'Dolch',          atk:'+6', dmg:'1d4+4', special:'Nick'           },
+    { name:'Kurzbogen',      atk:'+6', dmg:'1d6+4', special:'Vex'            },
+    { name:'Knüppel',        atk:'+3', dmg:'1d4+0', special:'Slow'           },
+    { name:'Natural Poison', atk:'+6', dmg:'2d4',   special:''               },
+    { name:'Parierdolch',    atk:'+2 Mag.', dmg:'1d4', special:'Parry (+1 RK)' },
+  ],
+  tatendrang: false,
+  telekinesis: false,
+  verschnaufen: [false, false],
+  skills: ['Poisonous Skin','Doppelattacke'],
+  inventory: [
+    { name:'Sextant',        qty:'1', img:'', tile:true },
+    { name:'Kompass',        qty:'1', img:'', tile:true },
+    { name:'Essensrationen', qty:'2', img:'', tile:true },
+  ],
+  traits: [],
+  languages: ['Common','Grung'],
+};
+
+function blankDefaults(charName) {
+  return {
+    charName,
+    attrs: [
+      {key:'STR',label:'Strength',val:10,save:'+0'},
+      {key:'INT',label:'Intelligence',val:10,save:'+0'},
+      {key:'DEX',label:'Dexterity',val:10,save:'+0'},
+      {key:'WIS',label:'Wisdom',val:10,save:'+0'},
+      {key:'CON',label:'Konstitution',val:10,save:'+0'},
+      {key:'CHA',label:'Charisma',val:10,save:'+0'},
+    ],
+    fight:[
+      {key:'INI',label:'Initiative',val:0},
+      {key:'AC',label:'Rüstungsklasse',val:10},
+      {key:'ATK',label:'Angriff',val:0},
+      {key:'DMG',label:'Schaden',val:0},
+      {key:'PDMG',label:'Passiver Schaden',val:'+0'},
+    ],
+    attrSkills:{
+      STR:{skills:[],prof:[],bonus:[]},INT:{skills:[],prof:[],bonus:[]},
+      DEX:{skills:[],prof:[],bonus:[]},WIS:{skills:[],prof:[],bonus:[]},
+      CON:{skills:[],prof:[],bonus:[]},CHA:{skills:[],prof:[],bonus:[]},
+    },
+    psiDice:[false,false,false,false,false,false],
+    psiAbilities:[],weapons:[],
+    tatendrang:false,telekinesis:false,
+    verschnaufen:[false,false],
+    skills:[],inventory:[],traits:[],
+    languages:['Common'],
+  };
+}
+
+const CHAR_BASES = {
+  cpento:  () => JSON.parse(JSON.stringify(defaults)),
+  liviana: () => blankDefaults('Liviana'),
+  yorwik:  () => blankDefaults('Yorwik'),
+};
+
+function deepMerge(target, source) {
+  const out = { ...target };
+  for (const k of Object.keys(source)) {
+    if (source[k] !== null && typeof source[k] === 'object' && !Array.isArray(source[k])) {
+      out[k] = deepMerge(target[k] || {}, source[k]);
+    } else {
+      out[k] = source[k];
+    }
+  }
+  return out;
+}
+
+function loadChar(pageKey) {
+  const stored = JSON.parse(localStorage.getItem(CHAR_KEYS[pageKey])||'{}');
+  return deepMerge(CHAR_BASES[pageKey](), stored);
+}
+function loadGroup() {
+  const raw = localStorage.getItem(GROUP_KEY);
+  if (raw) return JSON.parse(raw);
+  // first load: migrate quests from existing C'Pento save
+  const cpento = JSON.parse(localStorage.getItem('char-sheet-v6')||'{}');
+  const G = { quests: cpento.quests || DEFAULT_QUESTS };
+  localStorage.setItem(GROUP_KEY, JSON.stringify(G));
+  return G;
+}
+function saveGroup(G) { localStorage.setItem(GROUP_KEY, JSON.stringify(G)); }
+
+let S = loadChar('cpento');
+function save() { if(activePage!=='gruppe') localStorage.setItem(CHAR_KEYS[activePage], JSON.stringify(S)); }
+
+// ── PATCHES (C'Pento only) ──
+function applyPatches() {
+  if (activePage !== 'cpento') return;
+  S.inventory.forEach(item=>{ if(item.name==='Sextant'||item.name==='Kompass') item.tile=true; });
+  S.psiAbilities.forEach(a=>{ if(a.roll==='1W6') a.roll='1W8'; });
+  if (!S.skills.includes('Doppelattacke')) S.skills.push('Doppelattacke');
+  if (!S.weapons.some(w=>w.name==='Parierdolch')) S.weapons.push({name:'Parierdolch',atk:'+1 Mag.',dmg:'1d4',special:'Parry (+1 RK)'});
+  if (!S._p2) {
+    S.weapons.forEach(w=>{
+      w.atk=w.atk.replace(/^([+-]?)(\d+)/,(_,s,n)=>(s||'+')+(parseInt(n)+1));
+      w.dmg=w.dmg.replace(/\+(\d+)$/,(_,n)=>parseInt(n)>=1?'+'+(parseInt(n)+1):'+'+n);
+      w.dmg=w.dmg.replace(/w/gi,'d');
+    });
+    S._p2=true; save();
+  }
+  if (!S.inventory.some(it=>it.name==='Essensrationen')) { S.inventory.push({name:'Essensrationen',qty:'2',img:'',tile:true}); save(); }
+}
+applyPatches();
+
+let activeAttrKey = null;
+let activeWeaponIdx = 0;
+
+// ── HELPERS ──
+function calcMod(val) { const m = Math.floor((val-10)/2); return (m>=0?'+':'')+m; }
+function getProfBonus() { const el=document.getElementById('proficiency-bonus'); return parseInt((el?el.textContent:'+2').replace('+',''))||2; }
+function attrMod(key) { const a=S.attrs.find(a=>a.key===key); return a?Math.floor((a.val-10)/2):0; }
+function skillDisplay(key, si) {
+  const group = S.attrSkills[key];
+  if (group.bonus && group.bonus[si] !== null && group.bonus[si] !== undefined) {
+    const b = group.bonus[si];
+    return (b>=0?'+':'')+b;
+  }
+  const m = attrMod(key) + (group.prof[si] ? getProfBonus() : 0);
+  return (m>=0?'+':'')+m;
+}
+
+function rollSkill(key, si) {
+  const d20 = Math.floor(Math.random()*20)+1;
+  const modStr = skillDisplay(key, si);
+  const mod = parseInt(modStr, 10) || 0;
+  const total = d20 + mod;
+  const el = document.getElementById(`sroll-${key}-${si}`);
+  if (el) el.textContent = '= '+total;
+}
+
+// ── ATTRIBUTES ──
+function renderAttrs() {
+  const grid = document.getElementById('attr-grid');
+  grid.innerHTML = S.attrs.map((a,i) => {
+    const group = S.attrSkills[a.key];
+    const cnt = group ? group.skills.length : 0;
+    const isActive = activeAttrKey === a.key;
+    return `
+    <div class="attr-card${isActive?' active':''}" onclick="selectAttrGroup('${a.key}')">
+      <div class="attr-label">${a.key}</div>
+      <div class="attr-value" contenteditable="true" data-attr="${i}" onclick="event.stopPropagation()">${a.val}</div>
+      <div class="attr-mod" id="mod-${i}">${calcMod(a.val)}</div>
+      <div class="attr-save-line">
+        <span class="attr-save-lbl2">S:</span>
+        <span class="attr-save-val" contenteditable="true" data-save="${i}" onclick="event.stopPropagation()">${a.save||'+0'}</span>
+      </div>
+      ${cnt > 0 ? `<div class="attr-skill-hint">${cnt} ▾</div>` : ''}
+    </div>`;
+  }).join('');
+  grid.querySelectorAll('[data-attr]').forEach(el => {
+    el.addEventListener('input', () => {
+      const i = +el.dataset.attr;
+      S.attrs[i].val = parseInt(el.textContent)||0;
+      document.getElementById('mod-'+i).textContent = calcMod(S.attrs[i].val);
+      renderAttrSkillPanel(activeAttrKey); save();
+    });
+  });
+  grid.querySelectorAll('[data-save]').forEach(el => {
+    el.addEventListener('input', () => {
+      S.attrs[+el.dataset.save].save = el.textContent.trim(); save();
+    });
+  });
+}
+
+// ── ATTR SKILLS ──
+function selectAttrGroup(key) {
+  activeAttrKey = (activeAttrKey === key) ? null : key;
+  renderAttrs();
+  renderAttrSkillPanel(activeAttrKey);
+}
+
+function renderAttrSkills() { renderAttrSkillPanel(activeAttrKey); }
+
+function renderAttrSkillPanel(key) {
+  const panel = document.getElementById('attr-skill-panel');
+  if (!key) { panel.innerHTML = ''; return; }
+  const group = S.attrSkills[key];
+  const attr = S.attrs.find(a => a.key === key);
+  if (!group || group.skills.length === 0) { panel.innerHTML = ''; return; }
+  const rows = group.skills.map((skill,si) => `
+    <div class="skill-row">
+      <input type="checkbox" class="prof-check" data-ak="${key}" data-si="${si}" ${group.prof[si]?'checked':''}>
+      <span class="skill-mod" id="smod-${key}-${si}">${skillDisplay(key,si)}</span>
+      <span class="skill-name">${skill}</span>
+      <button class="skill-roll-btn" onclick="rollSkill('${key}',${si})">🎲</button>
+      <span class="skill-roll-result" id="sroll-${key}-${si}"></span>
+    </div>`).join('');
+  panel.innerHTML = `<div class="skill-panel-box"><div class="skill-panel-hdr">${attr?attr.label:key}</div><div class="skill-panel-grid">${rows}</div></div>`;
+  panel.querySelectorAll('.prof-check').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const k=cb.dataset.ak, si=+cb.dataset.si;
+      S.attrSkills[k].prof[si] = cb.checked;
+      if (!S.attrSkills[k].bonus||S.attrSkills[k].bonus[si]===null||S.attrSkills[k].bonus[si]===undefined) {
+        const el = document.getElementById(`smod-${k}-${si}`);
+        if (el) el.textContent = skillDisplay(k,si);
+      }
+      save();
+    });
+  });
+}
+
+// ── QUEST LOG (group state) ──
+function renderQuests() {
+  const G=loadGroup();
+  const el=document.getElementById('quest-list');
+  if(!el) return;
+  el.innerHTML=G.quests.map((q,i)=>`
+    <div class="quest-row${q.done?' done':''}">
+      <input type="checkbox" ${q.done?'checked':''} onchange="toggleQuest(${i})">
+      <span>📍 ${q.text}</span>
+    </div>`).join('');
+}
+function toggleQuest(i) {
+  const G=loadGroup(); G.quests[i].done=!G.quests[i].done; saveGroup(G); renderQuests();
+}
+
+// ── PAGE SWITCHING ──
+function switchPage(page) {
+  if (activePage!=='gruppe') save();
+  activePage=page;
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelector(`.nav-tab[data-page="${page}"]`).classList.add('active');
+  if (page==='gruppe') {
+    document.getElementById('char-page').style.display='none';
+    document.getElementById('gruppe-page').style.display='';
+    renderGroupPage();
+  } else {
+    document.getElementById('char-page').style.display='';
+    document.getElementById('gruppe-page').style.display='none';
+    S=loadChar(page); applyPatches(); renderAll();
+  }
+}
+
+function renderGroupPage() {
+  const el=document.getElementById('char-overview-grid');
+  const chars=[
+    {page:'cpento', name:"C'Pento", emoji:'🐸'},
+    {page:'liviana', name:'Liviana', emoji:'⚔️'},
+    {page:'yorwik',  name:'Yorwik',  emoji:'🧙'},
+  ];
+  el.innerHTML=chars.map(({page,name,emoji})=>{
+    const stored=JSON.parse(localStorage.getItem(CHAR_KEYS[page])||'{}');
+    const cs=deepMerge(CHAR_BASES[page](),stored);
+    const hpCur=cs.hpCur!==undefined?+cs.hpCur:(page==='cpento'?38:10);
+    const hpMax=cs.hpMax!==undefined?+cs.hpMax:(page==='cpento'?38:10);
+    const pct=Math.round(Math.min(100,Math.max(0,hpCur/(hpMax||1)*100)));
+    return `<div class="char-overview-card" onclick="switchPage('${page}')">
+      <div class="char-overview-name">${emoji} ${cs.charName||name}</div>
+      <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">HP ${hpCur} / ${hpMax}</div>
+      <div style="height:6px;background:#e8d8c0;border-radius:3px;margin-top:5px;overflow:hidden;">
+        <div style="height:100%;width:${pct}%;background:var(--hp-color);border-radius:3px;transition:width 0.3s;"></div>
+      </div>
+      <div style="font-size:0.62rem;color:var(--text-muted);margin-top:5px;text-align:right;">klick zum öffnen →</div>
+    </div>`;
+  }).join('');
+  renderQuests();
+}
+
+// ── FIGHT STATS ──
+function renderFight() {
+  const grid = document.getElementById('fight-grid');
+  grid.innerHTML = S.fight.map((f,i) => `
+    <div class="fight-stat">
+      <div class="fight-stat-label">${f.label}</div>
+      <div class="fight-stat-val" contenteditable="true" data-fight="${i}">${f.val}</div>
+    </div>`).join('');
+  grid.querySelectorAll('[data-fight]').forEach(el => {
+    el.addEventListener('input', () => { S.fight[+el.dataset.fight].val=el.textContent.trim(); save(); });
+  });
+}
+
+// ── WEAPONS ──
+function selectWeapon(j) { activeWeaponIdx=j; renderWeapons(); }
+
+function rollDiceStr(str) {
+  const m = str.match(/(\d+)[dw](\d+)([+-]\d+)?/i);
+  if (!m) return parseInt(str)||0;
+  const n=parseInt(m[1]), x=parseInt(m[2]), bonus=parseInt(m[3]||'0');
+  let t=bonus; for(let j=0;j<n;j++) t+=Math.floor(Math.random()*x)+1;
+  return t;
+}
+function rollWeaponAtk(i) {
+  const w=S.weapons[i];
+  const d20=Math.floor(Math.random()*20)+1;
+  const mod=parseInt(w.atk)||0;
+  const el=document.getElementById(`watk-result-${i}`);
+  if(el) el.textContent='= '+(d20+mod);
+}
+function rollWeaponDmg(i) {
+  const w=S.weapons[i];
+  const el=document.getElementById(`wdmg-result-${i}`);
+  if(el) el.textContent='= '+rollDiceStr(w.dmg);
+}
+
+function renderWeapons() {
+  const container = document.getElementById('weapons-tabs');
+  if (!S.weapons.length) {
+    container.innerHTML=`<button class="add-weapon-btn" onclick="addWeapon()">+ Waffe hinzufügen</button>`;
+    return;
+  }
+  if (activeWeaponIdx >= S.weapons.length) activeWeaponIdx = S.weapons.length-1;
+  const i = activeWeaponIdx;
+  const w = S.weapons[i];
+  container.innerHTML = `
+    <div class="weapon-tab-bar">
+      ${S.weapons.map((ww,j)=>`<div class="weapon-tab${j===i?' active':''}" onclick="selectWeapon(${j})">${ww.name}</div>`).join('')}
+      <button class="weapon-tab-add" onclick="addWeapon()">+ Waffe</button>
+    </div>
+    <div class="weapon-detail">
+      <div class="weapon-fields">
+        <div class="wp-cell"><div class="wp-lbl">Waffe</div><span contenteditable="true" data-wname="${i}">${w.name}</span></div>
+        <div class="wp-cell"><div class="wp-lbl">ATK</div><span contenteditable="true" data-watk="${i}">${w.atk}</span><div style="display:flex;align-items:center;gap:4px;margin-top:3px;"><button onclick="rollWeaponAtk(${i})" style="background:none;border:1px solid var(--border-light);border-radius:4px;padding:0px 5px;font-size:0.62rem;cursor:pointer;color:var(--text-muted);font-family:inherit;line-height:1.6;" title="1W20 + ATK">🎲 1W20</button><span id="watk-result-${i}" style="font-size:0.72rem;font-weight:bold;color:var(--accent2);"></span></div></div>
+        <div class="wp-cell"><div class="wp-lbl">Schaden</div><span contenteditable="true" data-wdmg="${i}">${w.dmg}</span><div style="display:flex;align-items:center;gap:4px;margin-top:3px;"><button onclick="rollWeaponDmg(${i})" style="background:none;border:1px solid var(--border-light);border-radius:4px;padding:0px 5px;font-size:0.62rem;cursor:pointer;color:var(--text-muted);font-family:inherit;line-height:1.6;" title="Schaden würfeln">🎲 DMG</button><span id="wdmg-result-${i}" style="font-size:0.72rem;font-weight:bold;color:var(--accent2);"></span></div></div>
+        <div class="wp-cell"><div class="wp-lbl">Special</div><span contenteditable="true" data-wsp="${i}">${w.special||'—'}</span></div>
+        <button onclick="calcWeaponPanel(${i})" style="background:none;border:1px solid var(--accent2);border-radius:4px;padding:2px 9px;font-size:0.75rem;cursor:pointer;color:var(--accent2);font-family:inherit;white-space:nowrap;">⚙ Berechnen</button>
+      </div>
+      <div id="calc-panel-${i}" style="display:none;margin-top:8px;border:1px solid var(--border-light);border-radius:6px;padding:8px 10px;font-size:0.78rem;gap:8px;align-items:center;flex-wrap:wrap;">
+        <span style="color:var(--text-muted);">Attribut:</span>
+        <select id="calc-attr-${i}" style="background:var(--input-bg);border:1px solid var(--border-light);border-radius:4px;padding:3px 6px;color:var(--text);font-family:inherit;font-size:0.78rem;">
+          ${['STR','DEX','CON','INT','WIS','CHA'].map(k=>`<option value="${k}">${k}</option>`).join('')}
+        </select>
+        <label style="display:flex;align-items:center;gap:4px;color:var(--text-muted);">
+          <input type="checkbox" id="calc-prof-${i}" checked style="accent-color:var(--accent);"> Proficiency
+        </label>
+        <span id="calc-preview-${i}" style="color:var(--accent2);font-weight:bold;min-width:120px;"></span>
+        <button onclick="applyCalcWeapon(${i})" style="background:var(--accent2);border:none;border-radius:4px;padding:3px 10px;font-size:0.78rem;cursor:pointer;color:#fff;font-family:inherit;">✓ Übernehmen</button>
+      </div>
+    </div>`;
+  const elName = container.querySelector('[data-wname]');
+  const elAtk  = container.querySelector('[data-watk]');
+  const elDmg  = container.querySelector('[data-wdmg]');
+  const elSp   = container.querySelector('[data-wsp]');
+  if (elName) elName.addEventListener('input', () => {
+    S.weapons[i].name=elName.textContent.trim(); save();
+    const tab=container.querySelector('.weapon-tab.active'); if(tab) tab.textContent=S.weapons[i].name;
+  });
+  if (elAtk) elAtk.addEventListener('input', ()=>{S.weapons[i].atk=elAtk.textContent.trim();save();});
+  if (elDmg) elDmg.addEventListener('input', ()=>{S.weapons[i].dmg=elDmg.textContent.trim();save();});
+  if (elSp)  elSp.addEventListener('input',  ()=>{S.weapons[i].special=elSp.textContent.trim();save();});
+  const sel=document.getElementById(`calc-attr-${i}`);
+  const chk=document.getElementById(`calc-prof-${i}`);
+  if (sel) sel.addEventListener('change', ()=>updateCalcPreview(i));
+  if (chk) chk.addEventListener('change', ()=>updateCalcPreview(i));
+}
+function calcWeaponPanel(i) {
+  const panel=document.getElementById(`calc-panel-${i}`);
+  if (!panel) return;
+  const open=panel.style.display!=='none';
+  panel.style.display=open?'none':'flex';
+  if (!open) updateCalcPreview(i);
+}
+function updateCalcPreview(i) {
+  const sel=document.getElementById(`calc-attr-${i}`);
+  const chk=document.getElementById(`calc-prof-${i}`);
+  const prev=document.getElementById(`calc-preview-${i}`);
+  if (!sel||!prev) return;
+  const mod=attrMod(sel.value);
+  const prof=chk&&chk.checked?getProfBonus():0;
+  const atk=mod+prof;
+  prev.textContent=`ATK: ${atk>=0?'+':''}${atk}  DMG-Mod: ${mod>=0?'+':''}${mod}`;
+}
+function applyCalcWeapon(i) {
+  const sel=document.getElementById(`calc-attr-${i}`);
+  const chk=document.getElementById(`calc-prof-${i}`);
+  if (!sel) return;
+  const mod=attrMod(sel.value);
+  const prof=chk&&chk.checked?getProfBonus():0;
+  const atk=mod+prof;
+  S.weapons[i].atk=(atk>=0?'+':'')+atk;
+  let dmg=S.weapons[i].dmg||'';
+  dmg=dmg.replace(/[+-]\d+$/,'').replace(/w/gi,'d');
+  S.weapons[i].dmg=dmg+(mod>=0?'+':'')+mod;
+  save(); renderWeapons();
+}
+function addWeapon() {
+  const n=prompt('Waffe:');
+  if(n&&n.trim()){S.weapons.push({name:n.trim(),atk:'+0',dmg:'—',special:''}); activeWeaponIdx=S.weapons.length-1; save(); renderWeapons();}
+}
+function removeWeapon(i){S.weapons.splice(i,1); if(activeWeaponIdx>=S.weapons.length) activeWeaponIdx=Math.max(0,S.weapons.length-1); save(); renderWeapons();}
+
+// ── TATENDRANG ──
+function renderTatendrang() {
+  const box = document.getElementById('tatendrang-box');
+  box.checked = S.tatendrang;
+  box.onchange = () => { S.tatendrang=box.checked; save(); };
+}
+function shortRestTatendrang() { S.tatendrang=false; save(); renderTatendrang(); }
+
+// ── VERSCHNAUFEN ──
+function renderVerschnaufen() {
+  const slots = document.getElementById('verschnaufen-slots');
+  slots.innerHTML = S.verschnaufen.map((used,i) => `
+    <input type="checkbox" class="vbox" data-vi="${i}" ${used?'checked':''} style="width:18px;height:18px;accent-color:var(--accent2);cursor:pointer;">`).join('');
+  slots.querySelectorAll('.vbox').forEach(cb=>{
+    cb.addEventListener('change',()=>{S.verschnaufen[+cb.dataset.vi]=cb.checked;save();});
+  });
+}
+function shortRestVerschnaufen() {
+  // restore one (uncheck first used)
+  const idx = S.verschnaufen.indexOf(true);
+  if (idx>=0) { S.verschnaufen[idx]=false; save(); renderVerschnaufen(); }
+}
+function longRestVerschnaufen() { S.verschnaufen=[false,false]; save(); renderVerschnaufen(); }
+
+function switchCharTab(n) {
+  document.querySelectorAll('.char-tab').forEach((t,i) => t.classList.toggle('active', i===n));
+  document.querySelectorAll('.char-tab-content').forEach((c,i) => c.classList.toggle('active', i===n));
+}
+
+function toggleSection(bodyId) {
+  const body = document.getElementById(bodyId);
+  if (!body) return;
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : '';
+  const arrowId = bodyId.replace('-body', '-arrow');
+  const arrow = document.getElementById(arrowId);
+  if (arrow) arrow.textContent = open ? '▶' : '▼';
+}
+
+// ── COMBAT SKILL TAGS ──
+function renderSkills() {
+  const list = document.getElementById('skills-list');
+  list.innerHTML = S.skills.map((s,i) => `
+    <div class="skill-tag-fight">
+      <span contenteditable="true" data-skill="${i}">${s}</span>
+    </div>`).join('');
+  list.querySelectorAll('[data-skill]').forEach(el=>{el.addEventListener('input',()=>{S.skills[+el.dataset.skill]=el.textContent.trim();save();});});
+}
+
+// ── PSI DICE ──
+function renderPsiDice() {
+  const row=document.getElementById('psi-dice-row');
+  row.innerHTML=S.psiDice.map((spent,i)=>`
+    <div class="psi-die ${spent?'spent':''}" onclick="togglePsiDie(${i})" title="${spent?'Verbraucht':'Verfügbar'}">
+      <div class="psi-die-sub">d8</div>
+      <div class="psi-die-val">${spent?'✕':'8'}</div>
+    </div>`).join('');
+}
+function togglePsiDie(i){S.psiDice[i]=!S.psiDice[i];save();renderPsiDice();}
+function longRestPsi(){S.psiDice=S.psiDice.map(()=>false);save();renderPsiDice();}
+
+// ── PSI ABILITIES ──
+function renderPsiAbilities() {
+  const icons=['🛡️','⚡','🌀'];
+  const c=document.getElementById('psi-abilities');
+  c.innerHTML=S.psiAbilities.map((ab,i)=>`
+    <div class="psi-ab-card">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+        <span class="psi-ab-name">${ab.name}</span>
+        <span style="font-size:0.72rem;color:var(--psi-color);white-space:nowrap;">📍 <span contenteditable="true" data-prange="${i}">${ab.range||'—'}</span>${i===2?' / Tiny Objects':''}</span>
+      </div>
+      ${ab.cost ? `<div class="psi-ab-meta"><span style="background:rgba(91,14,166,0.1);border:1px solid var(--psi-border);border-radius:4px;padding:1px 5px;color:var(--psi-color);">💠 ${ab.cost}</span></div>` : ''}
+      ${ab.roll ? `<div style="display:flex;align-items:center;gap:6px;">
+        <button onclick="rollPsiDie(${i})" style="background:none;border:1px solid var(--psi-border);border-radius:4px;padding:2px 8px;font-size:0.72rem;cursor:pointer;color:var(--psi-color);font-family:inherit;">🎲 ${ab.roll}</button>
+        <span id="psi-roll-result-${i}" style="font-size:0.8rem;font-weight:bold;color:var(--accent2);min-width:20px;"></span>
+      </div>` : ''}
+      ${i===2 ? `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+        <input type="checkbox" id="telekinesis-box" ${S.telekinesis?'checked':''} style="width:13px;height:13px;accent-color:var(--psi-color);cursor:pointer;" onchange="S.telekinesis=this.checked;save();">
+        <label for="telekinesis-box" style="font-size:0.69rem;color:var(--text-muted);cursor:pointer;">Verwendet</label>
+      </div>` : ''}
+    </div>`).join('');
+  c.querySelectorAll('[data-pn]').forEach(el=>{el.addEventListener('input',()=>{S.psiAbilities[+el.dataset.pn].name=el.textContent.trim();save();});});
+  c.querySelectorAll('[data-prange]').forEach(el=>{el.addEventListener('input',()=>{S.psiAbilities[+el.dataset.prange].range=el.textContent.trim();save();});});
+}
+function rollPsiDie(i) {
+  const result = Math.floor(Math.random()*8)+1;
+  const el = document.getElementById(`psi-roll-result-${i}`);
+  if (el) el.textContent = '= '+result;
+  // spend first available psi die
+  const idx = S.psiDice.indexOf(false);
+  if (idx >= 0) { S.psiDice[idx]=true; save(); renderPsiDice(); }
+}
+
+// ── INVENTORY ──
+let _invImgTarget = -1;
+let _coinImgTarget = '';
+function triggerInvImg(i) { _invImgTarget=i; document.getElementById('inv-img-input').click(); }
+function triggerCoinImg(key) { _coinImgTarget=key; document.getElementById('coin-img-input').click(); }
+function renderInventory() {
+  const allTiles=document.getElementById('all-tiles');
+  const list=document.getElementById('inventory-list');
+  const indexed=S.inventory.map((item,i)=>({item,i}));
+  const tiles=indexed.filter(({item})=>item.tile);
+  const rows =indexed.filter(({item})=>!item.tile);
+
+  // ── Unified tile row: coins + tiled inventory items ──
+  const coinDefs=[
+    {id:'coin-gold',   key:'coinGold',   icon:'🪙', label:'Gold',   def:52},
+    {id:'coin-silver', key:'coinSilver', icon:'⚪', label:'Silber', def:83},
+    {id:'coin-copper', key:'coinCopper', icon:'🟤', label:'Kupfer', def:0},
+  ];
+  if(!S.coinImages) S.coinImages={gold:'',silver:'',copper:''};
+  const coinHtml=coinDefs.map(c=>{
+    const imgKey=c.key.replace('coin','').replace('Gold','gold').replace('Silver','silver').replace('Copper','copper').toLowerCase();
+    const img=S.coinImages[imgKey]||'';
+    return `<div class="inv-tile">
+      ${img
+        ?`<img src="${img}" class="inv-tile-img" onclick="triggerCoinImg('${imgKey}')" title="Bild ändern" style="border-radius:50%;">`
+        :`<button class="inv-tile-ph" onclick="triggerCoinImg('${imgKey}')" title="Bild hinzufügen" style="font-size:2rem;">${c.icon}</button>`}
+      <span class="coin-label">${c.label}</span>
+      <div class="coin-val" contenteditable="true" id="${c.id}">${S[c.key]!==undefined?S[c.key]:c.def}</div>
+    </div>`;
+  }).join('');
+  const invTileHtml=tiles.map(({item,i})=>`
+    <div class="inv-tile">
+      ${item.img
+        ?`<img src="${item.img}" class="inv-tile-img" onclick="triggerInvImg(${i})" title="Bild ändern">`
+        :`<button class="inv-tile-ph" onclick="triggerInvImg(${i})" title="Bild hinzufügen">🖼</button>`}
+      <span style="font-size:0.74rem;">${item.name}</span>
+      <span contenteditable="true" data-iqty="${i}" class="tile-qty">${item.qty}</span>
+    </div>`).join('');
+  allTiles.innerHTML=coinHtml+invTileHtml;
+  // wire coin listeners
+  coinDefs.forEach(({id,key})=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener('input',()=>{S[key]=el.textContent.trim();save();});
+  });
+  // wire inv tile listeners
+  allTiles.querySelectorAll('[data-iname]').forEach(el=>{el.addEventListener('input',()=>{S.inventory[+el.dataset.iname].name=el.textContent.trim();save();});});
+  allTiles.querySelectorAll('[data-iqty]').forEach(el=>{el.addEventListener('input',()=>{S.inventory[+el.dataset.iqty].qty=el.textContent.trim();save();});});
+
+  // ── Row items ──
+  let html='';
+  rows.forEach(({item,i})=>{
+    html+=`<div class="inv-row">
+      ${item.img
+        ?`<img src="${item.img}" class="inv-img" onclick="triggerInvImg(${i})" title="Bild ändern">`
+        :`<button class="inv-img-btn" onclick="triggerInvImg(${i})" title="Bild hinzufügen">🖼</button>`}
+      <span>${item.name}</span>
+      <span contenteditable="true" data-iqty="${i}" style="text-align:center;min-width:24px;color:var(--text-muted);font-size:0.79rem;">×${item.qty}</span>
+      <button onclick="removeItem(${i})">🗑</button>
+    </div>`;
+  });
+  list.innerHTML=html;
+  list.querySelectorAll('[data-iname]').forEach(el=>{el.addEventListener('input',()=>{S.inventory[+el.dataset.iname].name=el.textContent.trim();save();});});
+  list.querySelectorAll('[data-iqty]').forEach(el=>{el.addEventListener('input',()=>{S.inventory[+el.dataset.iqty].qty=el.textContent.trim();save();});});
+}
+function addItem(){const n=prompt('Gegenstand:');if(n&&n.trim()){S.inventory.push({name:n.trim(),qty:'1',img:''});save();renderInventory();}}
+function removeItem(i){S.inventory.splice(i,1);save();renderInventory();}
+
+function _setupCoinImgInput() {
+  const inp=document.getElementById('coin-img-input');
+  inp.addEventListener('change', e => {
+    const file=e.target.files[0];
+    if (!file||!_coinImgTarget) return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const img=new Image();
+      img.onload=()=>{
+        const canvas=document.createElement('canvas');
+        const size=80; canvas.width=size; canvas.height=size;
+        canvas.getContext('2d').drawImage(img,0,0,size,size);
+        if(!S.coinImages) S.coinImages={gold:'',silver:'',copper:''};
+        S.coinImages[_coinImgTarget]=canvas.toDataURL('image/png',0.92);
+        save(); renderInventory(); _coinImgTarget='';
+      };
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    inp.value='';
+  });
+}
+
+function _setupInvImgInput() {
+  const inp=document.getElementById('inv-img-input');
+  inp.addEventListener('change', e => {
+    const file=e.target.files[0];
+    if (!file||_invImgTarget<0) return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const img=new Image();
+      img.onload=()=>{
+        const canvas=document.createElement('canvas');
+        const size=64; canvas.width=size; canvas.height=size;
+        canvas.getContext('2d').drawImage(img,0,0,size,size);
+        S.inventory[_invImgTarget].img=canvas.toDataURL('image/jpeg',0.88);
+        save(); renderInventory(); _invImgTarget=-1;
+      };
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    inp.value='';
+  });
+}
+
+// ── TRAITS ──
+function renderTraits() {
+  const list=document.getElementById('trait-list');
+  list.innerHTML=S.traits.map((t,i)=>`
+    <div class="trait-tag">
+      <span contenteditable="true" data-trait="${i}">${t}</span>
+      <button onclick="removeTrait(${i})">✕</button>
+    </div>`).join('');
+  const btn=document.createElement('button');btn.className='add-trait-btn';btn.textContent='+ Merkmal';btn.onclick=addTrait;
+  list.appendChild(btn);
+  list.querySelectorAll('[data-trait]').forEach(el=>{el.addEventListener('input',()=>{S.traits[+el.dataset.trait]=el.textContent.trim();save();});});
+}
+function addTrait(){const t=prompt('Rassenmerkmal:');if(t&&t.trim()){S.traits.push(t.trim());save();renderTraits();}}
+function removeTrait(i){S.traits.splice(i,1);save();renderTraits();}
+
+// ── LANGUAGES ──
+function renderLanguages() {
+  const list=document.getElementById('lang-list');
+  list.innerHTML='';
+  const lbl=document.createElement('span');
+  lbl.className='meta-label';lbl.style.cssText='align-self:center;font-size:0.62rem;';
+  lbl.textContent='Sprachen:';list.appendChild(lbl);
+  S.languages.forEach((lang,i)=>{
+    const tag=document.createElement('div');tag.className='lang-tag';
+    tag.innerHTML=`<span contenteditable="true" data-lang="${i}">${lang}</span>`;
+    list.appendChild(tag);
+  });
+  // + button removed
+  list.querySelectorAll('[data-lang]').forEach(el=>{el.addEventListener('input',()=>{S.languages[+el.dataset.lang]=el.textContent.trim();save();});});
+}
+function addLang(){const l=prompt('Sprache:');if(l&&l.trim()){S.languages.push(l.trim());save();renderLanguages();}}
+function removeLang(i){S.languages.splice(i,1);save();renderLanguages();}
+
+// ── TAKE DAMAGE / LONG REST ──
+function takeDamage() {
+  const dmgEl = document.getElementById('dmg-input');
+  const dmg = parseInt(dmgEl.value) || 0;
+  if (dmg <= 0) return;
+  const cur = Math.max(0, (+document.getElementById('hp-cur').value || 0) - dmg);
+  document.getElementById('hp-cur').value = cur;
+  dmgEl.value = '';
+  updateHpBar();
+  S.hpCur = cur; save();
+}
+function longRestHP() {
+  const max = +document.getElementById('hp-max').value || 0;
+  document.getElementById('hp-cur').value = max;
+  document.getElementById('hp-temp').value = 0;
+  updateHpBar();
+  S.hpCur = max; S.hpTemp = 0; save();
+}
+
+// ── HP ──
+function updateHpBar(){
+  const cur=+document.getElementById('hp-cur').value||0;
+  const max=+document.getElementById('hp-max').value||1;
+  document.getElementById('hp-bar').style.width=Math.min(100,Math.max(0,Math.round(cur/max*100)))+'%';
+  document.getElementById('hp-label').textContent=cur+' / '+max;
+}
+// ── LOAD CHAR UI — restores state into DOM on every char switch ──
+function loadCharUI() {
+  if(S.hpCur!==undefined) document.getElementById('hp-cur').value=S.hpCur;
+  if(S.hpMax!==undefined) document.getElementById('hp-max').value=S.hpMax;
+  if(S.hpTemp!==undefined) document.getElementById('hp-temp').value=S.hpTemp;
+  updateHpBar();
+  document.querySelectorAll('.death-success').forEach((c,i)=>c.checked=!!(S.deathSuccess&&S.deathSuccess[i]));
+  document.querySelectorAll('.death-fail').forEach((c,i)=>c.checked=!!(S.deathFail&&S.deathFail[i]));
+  const hib=document.getElementById('heroic-inspiration'); if(hib) hib.checked=!!S.heroicInspiration;
+  ['passive-perception','proficiency-bonus'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.textContent=S[id]||(id==='proficiency-bonus'?'+2':'11');
+  });
+  const cnEl=document.querySelector('.char-name');
+  if(cnEl&&S.charName) cnEl.textContent=S.charName;
+  const img=document.getElementById('portrait-img');
+  if(S.portrait){img.src=S.portrait;img.style.display='block';document.getElementById('portrait-hint').style.display='none';}
+  else{img.src='';img.style.display='none';document.getElementById('portrait-hint').style.display='';}
+}
+
+// ── RENDER ALL ──
+function renderAll() {
+  activeAttrKey=null; activeWeaponIdx=0;
+  renderAttrs(); renderAttrSkills(); renderFight(); renderWeapons();
+  renderTatendrang(); renderVerschnaufen(); renderSkills();
+  renderPsiDice(); renderPsiAbilities(); renderInventory();
+  renderTraits(); renderLanguages(); loadCharUI();
+}
+
+// ── EVENT LISTENERS (wired once; always read current S) ──
+['hp-cur','hp-max','hp-temp'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',()=>{
+    updateHpBar();
+    S.hpCur=document.getElementById('hp-cur').value;
+    S.hpMax=document.getElementById('hp-max').value;
+    S.hpTemp=document.getElementById('hp-temp').value;
+    save();
+  });
+});
+document.querySelectorAll('.death-success,.death-fail').forEach(c=>{
+  c.addEventListener('change',()=>{
+    S.deathSuccess=[...document.querySelectorAll('.death-success')].map(x=>x.checked);
+    S.deathFail=[...document.querySelectorAll('.death-fail')].map(x=>x.checked);
+    save();
+  });
+});
+const heroicBox=document.getElementById('heroic-inspiration');
+heroicBox.addEventListener('change',()=>{S.heroicInspiration=heroicBox.checked;save();});
+['passive-perception','proficiency-bonus'].forEach(id=>{
+  const el=document.getElementById(id);
+  el.addEventListener('input',()=>{S[id]=el.textContent.trim();renderAttrSkillPanel(activeAttrKey);save();});
+});
+document.getElementById('portrait-input').addEventListener('change',function(){
+  const file=this.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=document.getElementById('portrait-img');
+    img.src=e.target.result;img.style.display='block';
+    document.getElementById('portrait-hint').style.display='none';
+    S.portrait=e.target.result;save();
+  };
+  reader.readAsDataURL(file);
+});
+document.querySelector('.char-name').addEventListener('input',function(){S.charName=this.textContent.trim();save();});
+document.addEventListener('focusout',()=>{ if(activePage!=='gruppe') save(); });
+
+// ── GLOBAL REST ──
+function doShortRest() {
+  shortRestTatendrang(); shortRestVerschnaufen();
+  S.telekinesis=false; save();
+  const tb=document.getElementById('telekinesis-box'); if(tb) tb.checked=false;
+}
+function doLongRest() {
+  shortRestTatendrang(); longRestVerschnaufen(); longRestHP(); longRestPsi();
+  S.telekinesis=false; save();
+  const tb=document.getElementById('telekinesis-box'); if(tb) tb.checked=false;
+}
+
+// ── INIT ──
+_setupInvImgInput();
+_setupCoinImgInput();
+renderAll();
+</script>
+</body>
+</html>

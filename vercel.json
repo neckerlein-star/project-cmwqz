@@ -1,0 +1,3 @@
+{
+  "rewrites": [{ "source": "/", "destination": "/character-sheet.html" }]
+}
