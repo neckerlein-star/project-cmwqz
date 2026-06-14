@@ -252,6 +252,7 @@
   <button class="nav-tab" data-page="gruppe" onclick="switchPage('gruppe')">👥 Gruppe</button>
   <button class="nav-tab" data-page="karte" onclick="switchPage('karte')">🗺️ Karte</button>
   <button class="nav-tab" data-page="beziehungen" onclick="switchPage('beziehungen')">🤝 Beziehungen</button>
+  <button class="nav-tab" data-page="cpento3d" onclick="switchPage('cpento3d')">🔮 C'Pento 3D</button>
 </div>
 
 <div id="char-page">
@@ -496,12 +497,31 @@
   </div>
 </div>
 
+<!-- ══ C'PENTO 3D PAGE ══ -->
+<div id="cpento3d-page" style="display:none">
+  <div class="card">
+    <div class="section-title">🔮 C'Pento 3D</div>
+    <div class="section-body" style="padding:0;">
+      <div id="xr-canvas-container" style="width:100%;height:480px;border-radius:0 0 8px 8px;overflow:hidden;background:#1a0f00;">
+        <canvas id="xr-canvas" style="width:100%;height:100%;display:block;"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="section-body" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <button id="xr-btn" onclick="enterXR()" style="display:none;">🥽 VR betreten</button>
+      <span id="xr-status" style="font-size:0.82rem;color:var(--text-muted);">Initialisierung…</span>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 // ── MULTI-CHAR STATE ──
 const CHAR_KEYS = { cpento:'char-sheet-v6', liviana:'char-liviana-v1', yorwik:'char-yorwik-v1' };
 const GROUP_KEY = 'group-v1';
-const GROUP_PAGES = ['gruppe','karte','beziehungen'];
+const GROUP_PAGES = ['gruppe','karte','beziehungen','cpento3d'];
 let activePage = 'cpento';
 
 const DEFAULT_QUESTS = [
@@ -805,11 +825,12 @@ function toggleQuest(i) {
 // ── PAGE SWITCHING ──
 function switchPage(page) {
   if (!GROUP_PAGES.includes(activePage)) save();
+  if (activePage==='cpento3d') stop3DPage();
   activePage=page;
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.querySelector(`.nav-tab[data-page="${page}"]`).classList.add('active');
   // hide all top-level pages
-  ['char-page','gruppe-page','karte-page','beziehungen-page'].forEach(id=>{
+  ['char-page','gruppe-page','karte-page','beziehungen-page','cpento3d-page'].forEach(id=>{
     document.getElementById(id).style.display='none';
   });
   if (page==='gruppe') {
@@ -821,6 +842,9 @@ function switchPage(page) {
   } else if (page==='beziehungen') {
     document.getElementById('beziehungen-page').style.display='';
     renderBeziehungenPage();
+  } else if (page==='cpento3d') {
+    document.getElementById('cpento3d-page').style.display='';
+    setTimeout(init3DPage, 50);
   } else {
     document.getElementById('char-page').style.display='';
     S=loadChar(page); applyPatches(); renderAll();
@@ -1557,6 +1581,116 @@ function setupRealtime(){
       else if(activePage==='beziehungen') renderBeziehungenPage();
     })
     .subscribe();
+}
+
+// ── C'PENTO 3D ──
+let _3d = null;
+
+function init3DPage() {
+  if (typeof THREE === 'undefined') {
+    document.getElementById('xr-canvas-container').innerHTML =
+      '<p style="text-align:center;padding:40px 20px;color:#8a7a6a;">3D nicht verfügbar in diesem Kontext</p>';
+    document.getElementById('xr-status').textContent = 'Three.js nicht geladen';
+    return;
+  }
+  if (_3d) { _3d.renderer.setAnimationLoop(_3d.loop); return; }
+
+  const canvas = document.getElementById('xr-canvas');
+  const W = canvas.offsetWidth || canvas.clientWidth || 600;
+  const H = canvas.offsetHeight || canvas.clientHeight || 480;
+  canvas.width = W; canvas.height = H;
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(window.devicePixelRatio || 1);
+  renderer.setSize(W, H);
+  renderer.xr.enabled = true;
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x1a0f00);
+
+  const camera = new THREE.PerspectiveCamera(55, W / H, 0.1, 100);
+  camera.position.set(0, 0.4, 3.2);
+
+  // Tetrahedron solid
+  const geo = new THREE.TetrahedronGeometry(1, 0);
+  const mat = new THREE.MeshPhongMaterial({ color: 0x7b3f00, emissive: 0x2a0e00, shininess: 90 });
+  const mesh = new THREE.Mesh(geo, mat);
+  scene.add(mesh);
+
+  // Wireframe overlay
+  const wireMat = new THREE.MeshBasicMaterial({ color: 0xc8a050, wireframe: true });
+  const wire = new THREE.Mesh(geo, wireMat);
+  scene.add(wire);
+
+  // Lighting
+  scene.add(new THREE.AmbientLight(0xfff4cc, 0.35));
+  const pl = new THREE.PointLight(0xffffff, 1.4);
+  pl.position.set(3, 4, 3);
+  scene.add(pl);
+  const pl2 = new THREE.PointLight(0xffaa44, 0.6);
+  pl2.position.set(-3, -2, 2);
+  scene.add(pl2);
+
+  const loop = function(t) {
+    const r = (t || 0) * 0.0006;
+    mesh.rotation.y = r;
+    mesh.rotation.x = r * 0.55;
+    wire.rotation.copy(mesh.rotation);
+    renderer.render(scene, camera);
+  };
+  renderer.setAnimationLoop(loop);
+  _3d = { renderer, scene, camera, mesh, wire, loop };
+
+  // Handle resize
+  window.addEventListener('resize', () => {
+    if (!_3d) return;
+    const c = document.getElementById('xr-canvas');
+    const w = c.offsetWidth, h = c.offsetHeight;
+    _3d.renderer.setSize(w, h);
+    _3d.camera.aspect = w / h;
+    _3d.camera.updateProjectionMatrix();
+  });
+
+  checkXRSupport();
+}
+
+function stop3DPage() {
+  if (_3d) _3d.renderer.setAnimationLoop(null);
+}
+
+async function checkXRSupport() {
+  const btn = document.getElementById('xr-btn');
+  const status = document.getElementById('xr-status');
+  if (!navigator.xr) {
+    status.textContent = 'WebXR nicht unterstützt (kein kompatibles Gerät)';
+    return;
+  }
+  try {
+    const supported = await navigator.xr.isSessionSupported('immersive-vr');
+    if (supported) {
+      btn.style.display = '';
+      status.textContent = '🥽 VR-Headset erkannt';
+    } else {
+      status.textContent = 'WebXR verfügbar, aber kein VR-Headset erkannt';
+    }
+  } catch(e) {
+    status.textContent = 'WebXR-Prüfung fehlgeschlagen: ' + e.message;
+  }
+}
+
+async function enterXR() {
+  if (!_3d || !navigator.xr) return;
+  const status = document.getElementById('xr-status');
+  try {
+    const session = await navigator.xr.requestSession('immersive-vr', {
+      optionalFeatures: ['local-floor', 'bounded-floor']
+    });
+    _3d.renderer.xr.setSession(session);
+    status.textContent = '🥽 VR aktiv';
+    session.addEventListener('end', () => { status.textContent = 'VR beendet'; });
+  } catch(e) {
+    status.textContent = 'Fehler: ' + e.message;
+  }
 }
 
 // ── INIT ──
