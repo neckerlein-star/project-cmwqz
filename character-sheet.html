@@ -496,10 +496,12 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 // ── MULTI-CHAR STATE ──
 const CHAR_KEYS = { cpento:'char-sheet-v6', liviana:'char-liviana-v1', yorwik:'char-yorwik-v1' };
 const GROUP_KEY = 'group-v1';
+const GROUP_PAGES = ['gruppe','karte','beziehungen'];
 let activePage = 'cpento';
 
 const DEFAULT_QUESTS = [
@@ -664,10 +666,10 @@ function loadGroup() {
   localStorage.setItem(GROUP_KEY, JSON.stringify(G));
   return G;
 }
-function saveGroup(G) { localStorage.setItem(GROUP_KEY, JSON.stringify(G)); }
+function saveGroup(G) { localStorage.setItem(GROUP_KEY, JSON.stringify(G)); sbPush('group_data','main',G); }
 
 let S = loadChar('cpento');
-function save() { if(activePage!=='gruppe') localStorage.setItem(CHAR_KEYS[activePage], JSON.stringify(S)); }
+function save() { if(!GROUP_PAGES.includes(activePage)){ localStorage.setItem(CHAR_KEYS[activePage], JSON.stringify(S)); sbPush('characters',activePage,S); } }
 
 // ── PATCHES (C'Pento only) ──
 function applyPatches() {
@@ -801,7 +803,6 @@ function toggleQuest(i) {
 }
 
 // ── PAGE SWITCHING ──
-const GROUP_PAGES = ['gruppe','karte','beziehungen'];
 function switchPage(page) {
   if (!GROUP_PAGES.includes(activePage)) save();
   activePage=page;
@@ -1486,12 +1487,70 @@ function _setupJSONImport() {
   });
 }
 
+// ── SUPABASE SYNC ──
+const SUPABASE_URL='https://qjpiiijlvwtzvfsyksfk.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFqcGlpaWpsdnd0enZmc3lrc2ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MDY4OTksImV4cCI6MjA5Njk4Mjg5OX0.6wfrLJKg1pdKRyhrf_2ATvZFz_ZOFXHCida9luImy9M';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let _sbReady=false;
+const _sbTimers={};
+function sbPush(table,id,data){
+  if(!_sbReady) return;
+  const k=table+id;
+  clearTimeout(_sbTimers[k]);
+  _sbTimers[k]=setTimeout(()=>{
+    sb.from(table).upsert({id,data,updated_at:new Date().toISOString()})
+      .then(({error})=>{if(error) console.warn('Supabase push:',error.message);});
+  },800);
+}
+function isEditing(){
+  const a=document.activeElement;
+  return a&&(a.getAttribute('contenteditable')==='true'||['INPUT','TEXTAREA','SELECT'].includes(a.tagName));
+}
+async function initFromSupabase(){
+  try{
+    const[charRes,grpRes]=await Promise.all([
+      sb.from('characters').select('id,data'),
+      sb.from('group_data').select('data').eq('id','main').maybeSingle()
+    ]);
+    if(!charRes.error&&charRes.data) charRes.data.forEach(row=>{
+      if(CHAR_KEYS[row.id]) localStorage.setItem(CHAR_KEYS[row.id],JSON.stringify(row.data));
+    });
+    if(!grpRes.error&&grpRes.data?.data) localStorage.setItem(GROUP_KEY,JSON.stringify(grpRes.data.data));
+    if(!GROUP_PAGES.includes(activePage)){S=loadChar(activePage);applyPatches();renderAll();}
+    else if(activePage==='gruppe') renderGroupPage();
+    else if(activePage==='karte') renderKartePage();
+    else if(activePage==='beziehungen') renderBeziehungenPage();
+  }catch(e){console.warn('Supabase init:',e);}
+  finally{_sbReady=true; setupRealtime();}
+}
+function setupRealtime(){
+  sb.channel('dnd-sheet')
+    .on('postgres_changes',{event:'*',schema:'public',table:'characters'},payload=>{
+      if(!payload.new?.id||!payload.new?.data) return;
+      const{id,data}=payload.new;
+      if(!CHAR_KEYS[id]) return;
+      localStorage.setItem(CHAR_KEYS[id],JSON.stringify(data));
+      if(activePage===id&&!isEditing()){S=deepMerge(CHAR_BASES[id](),data);renderAll();}
+      if(activePage==='gruppe') renderGroupPage();
+    })
+    .on('postgres_changes',{event:'*',schema:'public',table:'group_data'},payload=>{
+      if(!payload.new?.data) return;
+      localStorage.setItem(GROUP_KEY,JSON.stringify(payload.new.data));
+      if(isEditing()) return;
+      if(activePage==='gruppe') renderGroupPage();
+      else if(activePage==='karte') renderKartePage();
+      else if(activePage==='beziehungen') renderBeziehungenPage();
+    })
+    .subscribe();
+}
+
 // ── INIT ──
 _setupInvImgInput();
 _setupCoinImgInput();
 _setupJSONImport();
 _setupMapInput();
 renderAll();
+initFromSupabase();
 </script>
 </body>
 </html>
