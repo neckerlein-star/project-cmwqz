@@ -895,16 +895,16 @@ function clearMap() {
 }
 function _setupMapInput() {
   const inp=document.getElementById('map-input');
-  inp.addEventListener('change',e=>{
+  inp.addEventListener('change',async e=>{
     const file=e.target.files[0]; if(!file) return;
-    const reader=new FileReader();
-    reader.onload=ev=>{
-      const G=loadGroup(); G.mapImg=ev.target.result; saveGroup(G);
+    try{
+      const url=await uploadImage(file,'group/map',1200);
+      const G=loadGroup(); G.mapImg=url; saveGroup(G);
       const img=document.getElementById('map-img');
-      img.src=ev.target.result; img.style.display='block';
+      img.src=url; img.style.display='block';
       document.getElementById('map-hint').style.display='none';
-    };
-    reader.readAsDataURL(file); inp.value='';
+    }catch(err){console.error('Upload failed:',err);alert('Karte-Upload fehlgeschlagen.');}
+    inp.value='';
   });
 }
 
@@ -1227,45 +1227,29 @@ function removeItem(i){S.inventory.splice(i,1);save();renderInventory();}
 
 function _setupCoinImgInput() {
   const inp=document.getElementById('coin-img-input');
-  inp.addEventListener('change', e => {
+  inp.addEventListener('change', async e => {
     const file=e.target.files[0];
     if (!file||!_coinImgTarget) return;
-    const reader=new FileReader();
-    reader.onload=ev=>{
-      const img=new Image();
-      img.onload=()=>{
-        const canvas=document.createElement('canvas');
-        const size=80; canvas.width=size; canvas.height=size;
-        canvas.getContext('2d').drawImage(img,0,0,size,size);
-        if(!S.coinImages) S.coinImages={gold:'',silver:'',copper:''};
-        S.coinImages[_coinImgTarget]=canvas.toDataURL('image/png',0.92);
-        save(); renderInventory(); _coinImgTarget='';
-      };
-      img.src=ev.target.result;
-    };
-    reader.readAsDataURL(file);
+    try {
+      const url=await uploadImage(file,`chars/${activePage}/coin-${_coinImgTarget}`,80);
+      if(!S.coinImages) S.coinImages={gold:'',silver:'',copper:''};
+      S.coinImages[_coinImgTarget]=url;
+      save(); renderInventory(); _coinImgTarget='';
+    } catch(err){ console.error('Upload failed:',err); alert('Bild-Upload fehlgeschlagen.'); }
     inp.value='';
   });
 }
 
 function _setupInvImgInput() {
   const inp=document.getElementById('inv-img-input');
-  inp.addEventListener('change', e => {
+  inp.addEventListener('change', async e => {
     const file=e.target.files[0];
     if (!file||_invImgTarget<0) return;
-    const reader=new FileReader();
-    reader.onload=ev=>{
-      const img=new Image();
-      img.onload=()=>{
-        const canvas=document.createElement('canvas');
-        const size=64; canvas.width=size; canvas.height=size;
-        canvas.getContext('2d').drawImage(img,0,0,size,size);
-        S.inventory[_invImgTarget].img=canvas.toDataURL('image/jpeg',0.88);
-        save(); renderInventory(); _invImgTarget=-1;
-      };
-      img.src=ev.target.result;
-    };
-    reader.readAsDataURL(file);
+    try {
+      const url=await uploadImage(file,`chars/${activePage}/inv-${Date.now()}`,64);
+      S.inventory[_invImgTarget].img=url;
+      save(); renderInventory(); _invImgTarget=-1;
+    } catch(err){ console.error('Upload failed:',err); alert('Bild-Upload fehlgeschlagen.'); }
     inp.value='';
   });
 }
@@ -1402,16 +1386,16 @@ heroicBox.addEventListener('change',()=>{S.heroicInspiration=heroicBox.checked;s
   const el=document.getElementById(id);
   el.addEventListener('input',()=>{S[id]=el.textContent.trim();renderAttrSkillPanel(activeAttrKey);save();});
 });
-document.getElementById('portrait-input').addEventListener('change',function(){
+document.getElementById('portrait-input').addEventListener('change',async function(){
   const file=this.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=e=>{
+  try{
+    const url=await uploadImage(file,`chars/${activePage}/portrait`,128);
     const img=document.getElementById('portrait-img');
-    img.src=e.target.result;img.style.display='block';
+    img.src=url;img.style.display='block';
     document.getElementById('portrait-hint').style.display='none';
-    S.portrait=e.target.result;save();
-  };
-  reader.readAsDataURL(file);
+    S.portrait=url;save();
+  }catch(err){console.error('Upload failed:',err);alert('Bild-Upload fehlgeschlagen.');}
+  this.value='';
 });
 document.querySelector('.char-name').addEventListener('input',function(){S.charName=this.textContent.trim();save();});
 
@@ -1490,11 +1474,13 @@ function _setupJSONImport() {
 // ── SUPABASE SYNC ──
 const SUPABASE_URL='https://qjpiiijlvwtzvfsyksfk.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFqcGlpaWpsdnd0enZmc3lrc2ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MDY4OTksImV4cCI6MjA5Njk4Mjg5OX0.6wfrLJKg1pdKRyhrf_2ATvZFz_ZOFXHCida9luImy9M';
-const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let sb=null;
+try{ sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }
+catch(e){ console.warn('Supabase not available — running in local mode.'); }
 let _sbReady=false;
 const _sbTimers={};
 function sbPush(table,id,data){
-  if(!_sbReady) return;
+  if(!_sbReady||!sb) return;
   const k=table+id;
   clearTimeout(_sbTimers[k]);
   _sbTimers[k]=setTimeout(()=>{
@@ -1507,6 +1493,7 @@ function isEditing(){
   return a&&(a.getAttribute('contenteditable')==='true'||['INPUT','TEXTAREA','SELECT'].includes(a.tagName));
 }
 async function initFromSupabase(){
+  if(!sb){ _sbReady=true; return; }
   try{
     const[charRes,grpRes]=await Promise.all([
       sb.from('characters').select('id,data'),
@@ -1523,7 +1510,32 @@ async function initFromSupabase(){
   }catch(e){console.warn('Supabase init:',e);}
   finally{_sbReady=true; setupRealtime();}
 }
+async function uploadImage(file, storagePath, maxSize=null){
+  if(!sb) throw new Error('Supabase not available');
+  const blob = await new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const img=new Image();
+      img.onload=()=>{
+        const size=maxSize||Math.min(img.width,img.height,1200);
+        const canvas=document.createElement('canvas');
+        canvas.width=size; canvas.height=size;
+        canvas.getContext('2d').drawImage(img,0,0,size,size);
+        canvas.toBlob(b=>resolve(b),'image/jpeg',0.88);
+      };
+      img.onerror=reject;
+      img.src=ev.target.result;
+    };
+    reader.onerror=reject;
+    reader.readAsDataURL(file);
+  });
+  const{error}=await sb.storage.from('dnd-images').upload(storagePath,blob,{upsert:true,contentType:'image/jpeg'});
+  if(error) throw error;
+  return sb.storage.from('dnd-images').getPublicUrl(storagePath).data.publicUrl;
+}
+
 function setupRealtime(){
+  if(!sb) return;
   sb.channel('dnd-sheet')
     .on('postgres_changes',{event:'*',schema:'public',table:'characters'},payload=>{
       if(!payload.new?.id||!payload.new?.data) return;
