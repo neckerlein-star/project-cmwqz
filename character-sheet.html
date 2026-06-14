@@ -1477,10 +1477,9 @@ const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
 let sb=null;
 try{ sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }
 catch(e){ console.warn('Supabase not available — running in local mode.'); }
-let _sbReady=false;
 const _sbTimers={};
 function sbPush(table,id,data){
-  if(!_sbReady||!sb) return;
+  if(!sb) return;
   const k=table+id;
   clearTimeout(_sbTimers[k]);
   _sbTimers[k]=setTimeout(()=>{
@@ -1493,7 +1492,7 @@ function isEditing(){
   return a&&(a.getAttribute('contenteditable')==='true'||['INPUT','TEXTAREA','SELECT'].includes(a.tagName));
 }
 async function initFromSupabase(){
-  if(!sb){ _sbReady=true; return; }
+  if(!sb){ return; }
   try{
     const[charRes,grpRes]=await Promise.all([
       sb.from('characters').select('id,data'),
@@ -1508,7 +1507,11 @@ async function initFromSupabase(){
     else if(activePage==='karte') renderKartePage();
     else if(activePage==='beziehungen') renderBeziehungenPage();
   }catch(e){console.warn('Supabase init:',e);}
-  finally{_sbReady=true; setupRealtime();}
+  finally{
+    setupRealtime();
+    // Push current state so Supabase always has the latest
+    if(!GROUP_PAGES.includes(activePage)) save();
+  }
 }
 async function uploadImage(file, storagePath, maxSize=null){
   if(!sb) throw new Error('Supabase not available');
