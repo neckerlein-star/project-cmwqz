@@ -516,7 +516,6 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 // ── MULTI-CHAR STATE ──
 const CHAR_KEYS = { cpento:'char-sheet-v6', liviana:'char-liviana-v1', yorwik:'char-yorwik-v1' };
@@ -1587,13 +1586,24 @@ function setupRealtime(){
 let _3d = null;
 
 function init3DPage() {
+  if (_3d) { _3d.renderer.setAnimationLoop(_3d.loop); return; }
   if (typeof THREE === 'undefined') {
-    document.getElementById('xr-canvas-container').innerHTML =
-      '<p style="text-align:center;padding:40px 20px;color:#8a7a6a;">3D nicht verfügbar in diesem Kontext</p>';
-    document.getElementById('xr-status').textContent = 'Three.js nicht geladen';
+    // Load Three.js dynamically — only when user actually opens this tab
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+    s.onload = _bootThree;
+    s.onerror = () => {
+      document.getElementById('xr-canvas-container').innerHTML =
+        '<p style="text-align:center;padding:40px 20px;color:#8a7a6a;">3D nicht verfügbar in diesem Kontext</p>';
+      document.getElementById('xr-status').textContent = 'Three.js konnte nicht geladen werden';
+    };
+    document.head.appendChild(s);
     return;
   }
-  if (_3d) { _3d.renderer.setAnimationLoop(_3d.loop); return; }
+  _bootThree();
+}
+
+function _bootThree() {
 
   const canvas = document.getElementById('xr-canvas');
   const W = canvas.offsetWidth || canvas.clientWidth || 600;
